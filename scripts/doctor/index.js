@@ -1,5 +1,10 @@
 import fs from 'fs';
 import glob from 'glob';
+import path from 'path';
+
+function sanitizePath(p) {
+    return p.replace(/\\/g, '/');
+}
 
 async function init() {
     await cleanup();
@@ -30,9 +35,16 @@ async function cleanup() {
         fs.rmSync('athena-cache', { recursive: true, force: true });
     }
 
-    if (fs.existsSync('resources')) {
-        console.log(`Removing resources`);
-        fs.rmSync('resources', { recursive: true, force: true });
+    const coreResourcesPath = sanitizePath(path.join('resources', 'core'))
+    if (fs.existsSync(coreResourcesPath)) {
+        console.log(`Removing resources/core`);
+        fs.rmSync(coreResourcesPath, { recursive: true, force: true });
+    }
+
+    const coreWebviewsPath = sanitizePath(path.join('resources', 'webviews'))
+    if (fs.existsSync(coreWebviewsPath)) {
+        console.log(`Removing resources/webviews`);
+        fs.rmSync(coreWebviewsPath, { recursive: true, force: true });
     }
 
     if (fs.existsSync('cache')) {
@@ -41,19 +53,19 @@ async function cleanup() {
     }
 
     let badFiles = [];
-    badFiles = await new Promise(resolve => {
+    badFiles = await new Promise((resolve) => {
         glob('./src/core/**/*.js', (err, files) => {
             if (err) {
-                return resolve(files);;
+                return resolve(files);
             }
 
             return resolve(files);
         });
     });
 
-    for (let i = 0; i < badFiles.length; i++) {
-        if (fs.existsSync(badFiles[i])) {
-            fs.rmSync(badFiles[i], { recursive: true, force: true });
+    for (const file of badFiles) {
+        if (fs.existsSync(file)) {
+            fs.rmSync(file, { recursive: true, force: true });
         }
     }
 }

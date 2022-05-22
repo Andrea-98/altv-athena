@@ -32,6 +32,20 @@
                     </template>
                 </div>
             </div>
+            <div
+                v-for="(componentName, index) in getBankComponents()"
+                :name="componentName"
+                class="panel pa-6 mb-4 fill-full-width"
+            >
+                <component
+                    :is="componentName"
+                    class="fade-in"
+                    :key="index"
+                    v-bind:faction="faction"
+                    v-bind:character="character"
+                    v-bind:money="money"
+                />
+            </div>
         </div>
     </div>
 </template>
@@ -43,6 +57,7 @@ import { Faction } from '../../shared/interfaces';
 import { FactionParser } from '../utility/factionParser';
 import { FACTION_EVENTS } from '../../shared/factionEvents';
 import { FACTION_PFUNC } from '../../shared/funcNames';
+import { FactionPageInjections } from '../injections';
 
 const ComponentName = 'Bank';
 export default defineComponent({
@@ -55,6 +70,7 @@ export default defineComponent({
     components: {
         Button: defineAsyncComponent(() => import('@components/Button.vue')),
         Icon: defineAsyncComponent(() => import('@components/Icon.vue')),
+        ...FactionPageInjections.bank,
     },
     data() {
         return {
@@ -65,6 +81,9 @@ export default defineComponent({
         };
     },
     methods: {
+        getBankComponents() {
+            return Object.keys(FactionPageInjections.bank);
+        },
         withdraw() {
             if (this.amount > this.faction.bank) {
                 return;
@@ -95,6 +114,16 @@ export default defineComponent({
 
             alt.emit(FACTION_EVENTS.WEBVIEW.ACTION, FACTION_PFUNC.ADD_BANK, this.amount);
         },
+        updateBank() {
+            const member = FactionParser.getMember(this.faction, this.character);
+            const rank = FactionParser.getRank(this.faction, member);
+
+            this.bankAdd = rank.rankPermissions.bankAdd;
+            this.bankRemove = rank.rankPermissions.bankRemove;
+
+            this.manageRanks = rank.rankPermissions.manageRanks;
+            this.manageRankPermissions = rank.rankPermissions.manageRankPermissions;
+        }
     },
     watch: {
         amount() {
@@ -106,25 +135,11 @@ export default defineComponent({
             this.isValid = true;
         },
         faction() {
-            const member = FactionParser.getMember(this.faction, this.character);
-            const rank = FactionParser.getRank(this.faction, member);
-
-            this.bankAdd = rank.rankPermissions.bankAdd;
-            this.bankRemove = rank.rankPermissions.bankRemove;
-
-            this.manageRanks = rank.rankPermissions.manageRanks;
-            this.manageRankPermissions = rank.rankPermissions.manageRankPermissions;
+            this.updateBank();
         },
     },
     mounted() {
-        const member = FactionParser.getMember(this.faction, this.character);
-        const rank = FactionParser.getRank(this.faction, member);
-
-        this.bankAdd = rank.rankPermissions.bankAdd;
-        this.bankRemove = rank.rankPermissions.bankRemove;
-
-        this.manageRanks = rank.rankPermissions.manageRanks;
-        this.manageRankPermissions = rank.rankPermissions.manageRankPermissions;
+        this.updateBank();
     },
 });
 </script>
@@ -136,6 +151,7 @@ export default defineComponent({
     max-height: 75vh;
     box-sizing: border-box;
     overflow-y: scroll;
+    overflow-x: hidden;
 }
 
 .panel {

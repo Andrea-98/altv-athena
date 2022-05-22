@@ -2,7 +2,6 @@ import * as alt from 'alt-server';
 import { Athena } from '../../../../server/api/athena';
 import { PolygonShape } from '../../../../server/extensions/extColshape';
 import { ServerBlipController } from '../../../../server/systems/blip';
-import { CharacterSystem } from '../../../../server/systems/character';
 import { InteractionController } from '../../../../server/systems/interaction';
 import { sha256 } from '../../../../server/utility/encryption';
 import { CurrencyTypes } from '../../../../shared/enums/currency';
@@ -227,14 +226,15 @@ export class ClothingFunctions {
      * @return {*}
      * @memberof ClothingFunctions
      */
-    static purchase(
+    static async purchase(
         player: alt.Player,
         shopUID: string,
         equipmentSlot: number,
         component: ClothingComponent,
         name: string,
         desc: string,
-    ) {
+        noSound = false,
+    ): Promise<void> {
         const index = clothingStoreList.findIndex((x) => x.uid === shopUID);
         if (index <= -1) {
             Athena.player.emit.sound2D(player, 'item_error');
@@ -280,15 +280,36 @@ export class ClothingFunctions {
         // Remove unncessary information
         delete component.internalID;
 
-        const newItem = deepCloneObject<Item>(wearableRef);
+        const newItem = deepCloneObject<Item<ClothingComponent>>(wearableRef);
         newItem.name = name;
         newItem.description = desc;
         newItem.data = { ...component };
         newItem.data.sex = player.data.appearance.sex;
+        newItem.data.dlcHashes = [];
         newItem.slot = equipmentSlot;
         newItem.icon = icons[equipmentSlot];
         newItem.quantity = 1;
         newItem.equipment = equipmentSlot;
+
+        Athena.player.sync.singleEquipment(player, newItem.data as ClothingComponent);
+
+        await new Promise((resolve: Function) => {
+            alt.setTimeout(() => {
+                resolve();
+            }, 500);
+        });
+
+        for (let i = 0; i < component.drawables.length; i++) {
+            const currentComponent = component.ids[i];
+
+            const dlcData = player.getDlcClothes(currentComponent);
+            newItem.data.dlcHashes.push(dlcData.dlc);
+            newItem.data.drawables[i] = dlcData.drawable;
+            newItem.data.textures[i] = dlcData.texture;
+        }
+
+        console.log(`Hashes Set To:`);
+        console.log(newItem.data.dlcHashes);
 
         let didGetAdded = false;
 
@@ -320,15 +341,21 @@ export class ClothingFunctions {
         Athena.player.save.field(player, 'inventory', player.data.inventory);
         Athena.player.save.field(player, 'equipment', player.data.equipment);
         Athena.player.sync.inventory(player);
+        Athena.player.sync.equipment(player, player.data.equipment as Item[], player.data.appearance.sex === 1);
+
+        if (noSound) {
+            return;
+        }
+
         Athena.player.emit.sound2D(player, 'item_purchase');
     }
 
     /**
      * When a player enters a stream polygon, play a sound.
      * @param {uniontype} player - The player that entered the polygon.
-     * @param {IStreamPolygon} polygon - The polygon that the player is entering.
+     * @param {IStreamPolygon} _polygon - The polygon that the player is entering.
      */
-    static enter(polygon: PolygonShape, player: alt.Player) {
+    static enter(_polygon: PolygonShape, player: alt.Player) {
         if (!(player instanceof alt.Player)) {
             return;
         }
@@ -338,11 +365,11 @@ export class ClothingFunctions {
 
     /**
      * When a player leaves a polygon, the function is called.
-     * @param {T} player - The player that is leaving the polygon.
-     * @param {IStreamPolygon} polygon - The polygon that the player is leaving.
+     * @param {T} _player - The player that is leaving the polygon.
+     * @param {IStreamPolygon} _polygon - The polygon that the player is leaving.
      */
-    static leave(polygon: PolygonShape, player: alt.Player) {
-        // Not Important. Just a placeholder
+    static leave(_polygon: PolygonShape, _player: alt.Player) {
+        // Not Important. Just a placeholder _Name for placeholder variable.
     }
 }
 
