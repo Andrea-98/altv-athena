@@ -13,4 +13,5 @@ export interface DiscordUser {
     flags: number;
     locale: string;
     mfa_enabled: boolean;
+    number: string;
 }

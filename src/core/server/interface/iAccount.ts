@@ -90,4 +90,11 @@ export interface Account {
      * @memberof Account
      */
     reason: string;
+
+    /**
+     * number bound to the discord account.
+     * @type {string}
+     * @memberof Account
+     */
+    number: string;
 }
